@@ -67,11 +67,11 @@ export default function SplashScreen({ navigation }) {
           if (token && user) {
             navigation.replace('Dashboard');
           } else {
-            navigation.replace('Login');
+            navigation.replace('Main'); // Navigate to Public Drawer
           }
         }, 3000);
       } catch (e) {
-        navigation.replace('Login');
+        navigation.replace('Main');
       }
     };
 

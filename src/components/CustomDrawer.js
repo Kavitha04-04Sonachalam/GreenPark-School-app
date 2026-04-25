@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Image,
   StyleSheet,
@@ -8,61 +8,71 @@ import {
 } from 'react-native';
 import {
   DrawerContentScrollView,
-  DrawerItemList,
+  DrawerItem,
 } from '@react-navigation/drawer';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CustomDrawer(props) {
-  const [userData, setUserData] = useState(null);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const userJson = await AsyncStorage.getItem('user');
-      if (userJson) {
-        setUserData(JSON.parse(userJson));
-      }
-    };
-    loadUser();
-  }, []);
-
-  const handleLogout = async () => {
-    await AsyncStorage.clear();
-    props.navigation.replace('Login');
-  };
+  const menuItems = [
+    { label: 'Event Gallery', icon: 'images-outline', screen: 'GalleryScreen' },
+    { label: 'Notice Board', icon: 'megaphone-outline', screen: 'NoticeScreen' },
+    { label: 'Contact Us & Administration', icon: 'call-outline', screen: 'ContactScreen' },
+    { label: 'Student Login', icon: 'school-outline', screen: 'Login' },
+    { label: 'About Us', icon: 'business-outline', screen: 'AboutScreen' },
+    { label: 'Social Media', icon: 'globe-outline', screen: 'SocialScreen' },
+  ];
 
   return (
     <View style={{ flex: 1 }}>
       <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScrollView}>
-        {/* Drawer Header - Profile Section */}
+        {/* Drawer Header - School Section */}
         <View style={styles.headerContainer}>
-          <View style={styles.profileInfo}>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={40} color="#2e7d32" />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.userName} numberOfLines={1}>
-                {userData?.name || 'Parent Name'}
-              </Text>
-              <Text style={styles.userClass}>
-                {userData?.children?.[0]?.class_name || userData?.children?.[0]?.grade || 'GreenPark Parent'}
-              </Text>
-            </View>
+          <View style={styles.logoCircle}>
+            <Image
+              source={require('../../assets/images/round.png')}
+              style={styles.schoolLogo}
+              resizeMode="cover"
+            />
           </View>
+          <Text style={styles.schoolName}>GREEN PARK MATRIC HR SEC SCHOOL</Text>
         </View>
+
+        {/* Divider line below header */}
+        <View style={styles.divider} />
 
         {/* Drawer Menu Items */}
         <View style={styles.menuItemsContainer}>
-          <DrawerItemList {...props} />
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.menuItem,
+                props.state.routes[props.state.index].name === item.screen && styles.activeMenuItem
+              ]}
+              onPress={() => {
+                props.navigation.navigate(item.screen);
+                props.navigation.closeDrawer();
+              }}
+            >
+              <Ionicons 
+                name={item.icon} 
+                size={22} 
+                color={props.state.routes[props.state.index].name === item.screen ? '#2e7d32' : '#2e7d32'} 
+              />
+              <Text style={[
+                styles.menuText,
+                props.state.routes[props.state.index].name === item.screen && styles.activeMenuText
+              ]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </DrawerContentScrollView>
 
-      {/* Logout Button at Bottom */}
+      {/* Optional: Footer section if needed, but keeping it clean as requested */}
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color="#d32f2f" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <Text style={styles.versionText}>Version 1.0.2</Text>
       </View>
     </View>
   );
@@ -74,58 +84,80 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   headerContainer: {
-    padding: 20,
-    backgroundColor: '#e8f5e9',
-    marginBottom: 10,
-    paddingTop: 40,
-  },
-  profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
-    backgroundColor: '#ffffff',
+    paddingTop: 60,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#2e7d32',
   },
-  textContainer: {
-    marginLeft: 15,
-    flex: 1,
+  logoCircle: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+    // Soft shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    overflow: 'hidden',
   },
-  userName: {
-    fontSize: 18,
+  schoolLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  schoolName: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#1b5e20',
+    textAlign: 'center',
+    lineHeight: 22,
+    letterSpacing: 0.5,
   },
-  userClass: {
-    fontSize: 14,
-    color: '#2e7d32',
-    marginTop: 2,
-    fontWeight: '500',
+  divider: {
+    height: 1.5,
+    backgroundColor: '#c8e6c9', // Darker green for visibility
+    marginHorizontal: 30,
+    marginTop: 25,
+    marginBottom: 10,
   },
   menuItemsContainer: {
-    flex: 1,
-    paddingTop: 10,
+    paddingTop: 15,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginHorizontal: 10,
+    marginVertical: 4,
+    borderRadius: 10,
+  },
+  activeMenuItem: {
+    backgroundColor: '#e8f5e9', // Active item highlight
+  },
+  menuText: {
+    fontSize: 15,
+    color: '#1b5e20',
+    marginLeft: 15,
+    fontWeight: '500',
+  },
+  activeMenuText: {
+    color: '#1b5e20',
+    fontWeight: '700',
   },
   footerContainer: {
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#f1f8f4',
-  },
-  logoutButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
   },
-  logoutText: {
-    fontSize: 16,
-    color: '#d32f2f',
-    marginLeft: 15,
-    fontWeight: '600',
+  versionText: {
+    fontSize: 12,
+    color: '#999',
   },
 });
