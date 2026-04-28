@@ -10,6 +10,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DashboardScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
@@ -73,7 +74,18 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.welcomeText}>Welcome,</Text>
               <Text style={styles.userName}>{userData.name}</Text>
             </View>
-            <View style={styles.headerAccentLine} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={styles.logoutButton} 
+                onPress={async () => {
+                  await AsyncStorage.multiRemove(['token', 'user']);
+                  navigation.replace('Main');
+                }}
+              >
+                <Ionicons name="log-out-outline" size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <View style={styles.headerAccentLine} />
+            </View>
           </View>
         </View>
 
@@ -198,6 +210,12 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: '#fbc02d',
     borderRadius: 2,
+    marginLeft: 15,
+  },
+  logoutButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
   },
   section: {
     marginBottom: 25,

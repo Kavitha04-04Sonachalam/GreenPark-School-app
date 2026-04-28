@@ -11,8 +11,10 @@ import {
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import CommonHeader from '../components/CommonHeader';
 
 const NoticeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -21,9 +23,11 @@ const NoticeScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchAnnouncements();
+    }, [])
+  );
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -39,32 +43,53 @@ const NoticeScreen = ({ navigation }) => {
 
   const fetchAnnouncements = async () => {
     try {
+      setIsLoading(true);
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        Alert.alert('Error', 'Session expired. Please login again.');
-        return;
+      console.log('TOKEN STATUS:', token ? 'Token Found' : 'No Token Found');
+      
+      const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('https://api.indinexz.com/api/v1/admin/announcements', {
+      // Try fetching announcements
+      let response = await fetch('https://api.indinexz.com/api/v1/admin/announcements', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       });
 
+      // Fallback: If 404 or 401, try the public endpoint
+      if (!response.ok) {
+        console.log('Trying public fallback...');
+        const publicResponse = await fetch('https://api.indinexz.com/api/v1/announcements', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+        if (publicResponse.ok) response = publicResponse;
+      }
+
       const data = await response.json();
+      console.log('Announcements Response:', data);
 
       if (response.ok) {
-        setNotices(data);
-        setFilteredNotices(data);
+        // Handle both direct array and nested data object
+        const noticeList = Array.isArray(data) ? data : (data.data || []);
+        setNotices(noticeList);
+        setFilteredNotices(noticeList);
+      } else if (response.status === 401) {
+        Alert.alert('Session Expired', 'Please login to view announcements.', [
+          { text: 'Login', onPress: () => navigation.navigate('Login') },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch announcements');
+        console.warn('Notice fetch failed:', data.message);
       }
     } catch (error) {
       console.error('Fetch Error:', error);
-      Alert.alert('Error', 'Something went wrong. Please check your internet connection.');
     } finally {
       setIsLoading(false);
     }
@@ -100,21 +125,8 @@ const NoticeScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top + 20 }]}>
-      {/* 1. FIXED TOP APP BAR */}
-      <View style={styles.appBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-          <Ionicons name="arrow-back" size={24} color="#1b5e20" />
-        </TouchableOpacity>
-        
-        <Text style={styles.appBarTitle}>Notice Board</Text>
-        
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="filter-outline" size={22} color="#1b5e20" />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.container}>
+      <CommonHeader title="Notice Board" navigation={navigation} />
 
       {/* 2. SEARCH BAR */}
       <View style={styles.searchContainer}>
@@ -151,7 +163,7 @@ const NoticeScreen = ({ navigation }) => {
         refreshing={isLoading}
         onRefresh={fetchAnnouncements}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

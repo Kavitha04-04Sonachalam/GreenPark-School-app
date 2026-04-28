@@ -10,45 +10,57 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import CommonHeader from '../components/CommonHeader';
 
 const NotificationScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchNotifications();
+    }, [])
+  );
 
   const fetchNotifications = async () => {
     try {
+      setIsLoading(true);
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        Alert.alert('Error', 'Session expired. Please login again.');
-        return;
+      
+      const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch('https://api.indinexz.com/api/v1/parent/notifications', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       });
 
       const data = await response.json();
+      console.log('Notifications Response:', data);
 
       if (response.ok) {
-        setNotifications(data);
+        const notificationList = Array.isArray(data) ? data : (data.data || []);
+        setNotifications(notificationList);
+      } else if (response.status === 401) {
+        Alert.alert('Session Expired', 'Please login to view notifications.', [
+          { text: 'Login', onPress: () => navigation.navigate('Login') },
+          { text: 'Cancel', style: 'cancel' }
+        ]);
       } else {
-        Alert.alert('Error', data.message || 'Failed to fetch notifications');
+        console.warn('Notification fetch failed:', data.message);
       }
     } catch (error) {
       console.error('Fetch Error:', error);
-      Alert.alert('Error', 'Something went wrong. Please check your internet connection.');
     } finally {
       setIsLoading(false);
     }
@@ -94,17 +106,8 @@ const NotificationScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top + 20 }]}>
-      {/* APP BAR */}
-      <View style={styles.appBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-          <Ionicons name="arrow-back" size={24} color="#1b5e20" />
-        </TouchableOpacity>
-        
-        <Text style={styles.appBarTitle}>Notifications</Text>
-        
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.container}>
+      <CommonHeader title="Notifications" navigation={navigation} />
 
       <FlatList
         data={notifications}
@@ -121,7 +124,7 @@ const NotificationScreen = ({ navigation }) => {
         refreshing={isLoading}
         onRefresh={fetchNotifications}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

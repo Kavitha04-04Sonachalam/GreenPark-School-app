@@ -129,18 +129,24 @@ const HomeScreen = ({ navigation }) => {
           
           {/* 2. SCROLLABLE BANNER (CAROUSEL) */}
           <View style={styles.bannerContainer}>
-            <ScrollView
-              ref={scrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={onScroll}
-              style={styles.bannerScrollView}
-            >
-              {banners.map((img, index) => (
-                <Image key={index} source={img} style={styles.bannerImage} resizeMode="cover" />
-              ))}
-            </ScrollView>
+              <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onScroll}
+                style={styles.bannerScrollView}
+              >
+                {banners.map((img, index) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    activeOpacity={0.9} 
+                    onPress={() => navigation.navigate('GalleryScreen')}
+                  >
+                    <Image source={img} style={styles.bannerImage} resizeMode="cover" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             
             {/* Banner Pagination Dots */}
             <View style={styles.pagination}>
