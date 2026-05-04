@@ -29,7 +29,7 @@ const HomeScreen = ({ navigation }) => {
   ];
 
   const features = [
-    { id: '1', title: 'Event Gallery', icon: '📸', screen: 'GalleryScreen' },
+    { id: '1', title: 'Event Gallery', icon: '📸', screen: 'EventList' },
     { id: '2', title: 'Notice Board', icon: '📢', screen: 'NoticeScreen' },
     { id: '3', title: 'Contact Us', icon: '📞', screen: 'ContactScreen' },
     { id: '4', title: 'Student Login', icon: '🎓', screen: 'Login' },
@@ -141,7 +141,7 @@ const HomeScreen = ({ navigation }) => {
                   <TouchableOpacity 
                     key={index} 
                     activeOpacity={0.9} 
-                    onPress={() => navigation.navigate('GalleryScreen')}
+                    onPress={() => navigation.navigate('EventList')}
                   >
                     <Image source={img} style={styles.bannerImage} resizeMode="cover" />
                   </TouchableOpacity>

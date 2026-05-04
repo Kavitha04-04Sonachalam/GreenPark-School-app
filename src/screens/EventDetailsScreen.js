@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   View, 
   Text, 
@@ -14,11 +15,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from 'expo-av';
 import CommonHeader from '../components/CommonHeader';
-import { getEventById } from '../services/galleryApi';
+import { getEventById, getEventMedia } from '../services/galleryApi';
 import { getMediaUrl, getPlaceholderImage } from '../utils/media';
+import YoutubePlayer from 'react-native-youtube-iframe';
+
+function getYouTubeId(url) {
+  if (!url) return null;
+  const regExp = /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^&?\/]+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+}
 
 const { width } = Dimensions.get('window');
-const GRID_SPACING = 10;
+const GRID_SPACING = 8;
 const ITEM_WIDTH = (width - 40 - GRID_SPACING) / 2;
 
 const EventDetailsScreen = ({ route, navigation }) => {
@@ -27,18 +36,33 @@ const EventDetailsScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [showFullMedia, setShowFullMedia] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
-  useEffect(() => {
-    fetchEventDetails();
-  }, [eventId]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchEventDetails();
+    }, [eventId])
+  );
 
   const fetchEventDetails = async () => {
     try {
       setLoading(true);
-      const response = await getEventById(eventId);
+      const [eventResponse, mediaResponse] = await Promise.all([
+        getEventById(eventId),
+        getEventMedia(eventId).catch(e => {
+          console.log('Failed to fetch media:', e);
+          return null;
+        })
+      ]);
       
       // Handle both { data: {...} } and {...} formats
-      const eventData = response?.data || response;
+      let eventData = eventResponse?.data || eventResponse;
+      
+      const mediaData = mediaResponse?.data || mediaResponse;
+      if (mediaData && Array.isArray(mediaData)) {
+        eventData = { ...eventData, media: mediaData };
+      }
+      
       setEvent(eventData);
     } catch (error) {
       console.error('Failed to fetch event details:', error);
@@ -50,10 +74,33 @@ const EventDetailsScreen = ({ route, navigation }) => {
   const handleMediaPress = (media) => {
     setSelectedMedia(media);
     setShowFullMedia(true);
+    if (media.type === 'youtube' || media.media_type === 'youtube') {
+      // Small delay to ensure modal is rendered before autoplay
+      setTimeout(() => setPlaying(true), 300);
+    }
   };
 
+  const onStateChange = useCallback((state) => {
+    if (state === "ended") {
+      setPlaying(false);
+    } else if (state === "playing") {
+      setPlaying(true);
+    } else if (state === "paused") {
+      setPlaying(false);
+    }
+  }, []);
+
   const renderMediaItem = ({ item }) => {
-    const isVideo = item.type === 'video' || item.url?.endsWith('.mp4');
+    const isVideo = item.type === 'video' || item.media_type === 'video' || item.url?.endsWith('.mp4') || item.media_url?.endsWith('.mp4') || item.url?.endsWith('.mov') || item.media_url?.endsWith('.mov');
+    const isYouTube = item.type === 'youtube' || item.media_type === 'youtube';
+    
+    let thumbUrl = getMediaUrl(item) || getPlaceholderImage();
+    if (isYouTube) {
+      const videoId = getYouTubeId(item.media_url || item.url);
+      if (videoId) {
+        thumbUrl = `https://img.youtube.com/vi/${videoId}/0.jpg`;
+      }
+    }
     
     return (
       <TouchableOpacity 
@@ -62,11 +109,11 @@ const EventDetailsScreen = ({ route, navigation }) => {
         activeOpacity={0.8}
       >
         <Image 
-          source={{ uri: getMediaUrl(item) || getPlaceholderImage() }} 
+          source={{ uri: thumbUrl }} 
           style={styles.mediaThumbnail} 
           resizeMode="cover"
         />
-        {isVideo && (
+        {(isVideo || isYouTube) && (
           <View style={styles.playOverlay}>
             <Ionicons name="play-circle" size={40} color="#ffffff" />
           </View>
@@ -143,15 +190,31 @@ const EventDetailsScreen = ({ route, navigation }) => {
         <View style={styles.modalContainer}>
           <TouchableOpacity 
             style={styles.closeButton} 
-            onPress={() => setShowFullMedia(false)}
+            onPress={() => {
+              setShowFullMedia(false);
+              setPlaying(false);
+            }}
           >
             <Ionicons name="close" size={30} color="#ffffff" />
           </TouchableOpacity>
           
           {selectedMedia && (
-            selectedMedia.type === 'video' || selectedMedia.url?.endsWith('.mp4') ? (
+            selectedMedia.type === 'youtube' || selectedMedia.media_type === 'youtube' ? (
+              <View style={styles.youtubeWrapper}>
+                <YoutubePlayer
+                  height={250}
+                  play={playing}
+                  videoId={getYouTubeId(selectedMedia.media_url || selectedMedia.url)}
+                  onChangeState={onStateChange}
+                  webViewProps={{
+                    androidLayerType: 'hardware',
+                  }}
+                  forceAndroidAutoplay={true}
+                />
+              </View>
+            ) : selectedMedia.type === 'video' || selectedMedia.media_type === 'video' || selectedMedia.url?.endsWith('.mp4') || selectedMedia.media_url?.endsWith('.mp4') || selectedMedia.url?.endsWith('.mov') || selectedMedia.media_url?.endsWith('.mov') ? (
               <Video
-                source={{ uri: selectedMedia.url }}
+                source={{ uri: getMediaUrl(selectedMedia) }}
                 rate={1.0}
                 volume={1.0}
                 isMuted={false}
@@ -308,6 +371,11 @@ const styles = StyleSheet.create({
   fullMedia: {
     width: '100%',
     height: '100%',
+  },
+  youtubeWrapper: {
+    width: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
 });
 

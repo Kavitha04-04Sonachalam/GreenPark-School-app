@@ -12,18 +12,19 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
-import { submitContactForm } from '../services/contactApi';
+import axios from 'axios';
 
 const ContactScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    student_name: '',
+    class_applied: '',
+    parent_name: '',
     phone: '',
-    studentClass: '',
-    section: '',
     message: '',
   });
   const [loading, setLoading] = useState(false);
@@ -33,11 +34,19 @@ const ContactScreen = ({ navigation }) => {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Required', 'Please enter your name');
+    if (!formData.student_name.trim()) {
+      Alert.alert('Required', 'Please enter student name');
       return false;
     }
-    if (!formData.phone.trim() || formData.phone.length < 10) {
+    if (!formData.class_applied.trim()) {
+      Alert.alert('Required', 'Please enter class applied');
+      return false;
+    }
+    if (!formData.parent_name.trim()) {
+      Alert.alert('Required', 'Please enter parent name');
+      return false;
+    }
+    if (!formData.phone.trim() || formData.phone.length !== 10) {
       Alert.alert('Required', 'Please enter a valid 10-digit phone number');
       return false;
     }
@@ -53,17 +62,22 @@ const ContactScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const response = await submitContactForm(formData);
-      if (response.success) {
-        Alert.alert('Success', response.message);
-        setFormData({
-          name: '',
-          phone: '',
-          studentClass: '',
-          section: '',
-          message: '',
-        });
-      }
+      await axios.post("https://api.indinexz.com/api/v1/admission-enquiry", {
+        student_name: formData.student_name,
+        class_applied: formData.class_applied,
+        parent_name: formData.parent_name,
+        phone: formData.phone,
+        message: formData.message,
+      });
+
+      Alert.alert('Success', 'Enquiry submitted successfully');
+      setFormData({
+        student_name: '',
+        class_applied: '',
+        parent_name: '',
+        phone: '',
+        message: '',
+      });
     } catch (error) {
       Alert.alert('Error', 'Failed to submit enquiry. Please try again.');
     } finally {
@@ -129,21 +143,34 @@ const ContactScreen = ({ navigation }) => {
             {/* 3. MAP SECTION */}
             <View style={styles.mapContainer}>
               <Text style={styles.sectionTitle}>Locate Us</Text>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: 11.2341,
-                  longitude: 78.8762,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => {
+                  const url = "https://www.google.com/maps/search/?api=1&query=Green+Park+Matric+Hr+Sec+School,+No+9,+Sai+Ram+Nagar,+Siruvachur,+Perambalur+-+621113";
+                  Linking.openURL(url);
                 }}
               >
-                <Marker 
-                  coordinate={{ latitude: 11.2341, longitude: 78.8762 }} 
-                  title="Green Park School"
-                  description="Siruvachur, Perambalur"
-                />
-              </MapView>
+                <View pointerEvents="none">
+                  <MapView
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: 11.2785,
+                      longitude: 78.8730,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                  >
+                    <Marker 
+                      coordinate={{
+                        latitude: 11.2785,
+                        longitude: 78.8730,
+                      }} 
+                      title="Green Park Matric Hr Sec School"
+                      description="No : 9, Sai Ram Nagar, Siruvachur, Perambalur - 621113"
+                    />
+                  </MapView>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* 4. FORM SECTION */}
@@ -151,13 +178,34 @@ const ContactScreen = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Enquiry Form</Text>
               
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Name *</Text>
+                <Text style={styles.label}>Student Name *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your name"
-                  value={formData.name}
-                  onChangeText={(val) => handleInputChange('name', val)}
+                  placeholder="Enter student name"
+                  value={formData.student_name}
+                  onChangeText={(val) => handleInputChange('student_name', val)}
                 />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                  <Text style={styles.label}>Class Applied *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 10th"
+                    value={formData.class_applied}
+                    onChangeText={(val) => handleInputChange('class_applied', val)}
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Parent Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter parent name"
+                    value={formData.parent_name}
+                    onChangeText={(val) => handleInputChange('parent_name', val)}
+                  />
+                </View>
               </View>
 
               <View style={styles.inputGroup}>
@@ -170,27 +218,6 @@ const ContactScreen = ({ navigation }) => {
                   value={formData.phone}
                   onChangeText={(val) => handleInputChange('phone', val)}
                 />
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.label}>Class</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 10th"
-                    value={formData.studentClass}
-                    onChangeText={(val) => handleInputChange('studentClass', val)}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Section</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. A"
-                    value={formData.section}
-                    onChangeText={(val) => handleInputChange('section', val)}
-                  />
-                </View>
               </View>
 
               <View style={styles.inputGroup}>

@@ -5,9 +5,9 @@ import { API_URL } from '../services/galleryApi';
  * Handles absolute, relative, and various field names.
  */
 export const getMediaUrl = (item) => {
-  // Check common field names for images/videos
   const path = item?.thumbnail_url || 
                item?.url || 
+               item?.media_url ||
                item?.image || 
                item?.thumbnail || 
                item?.image_url || 

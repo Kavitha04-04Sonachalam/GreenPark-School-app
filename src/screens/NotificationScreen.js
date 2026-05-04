@@ -7,60 +7,37 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  SafeAreaView,
+  StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import CommonHeader from '../components/CommonHeader';
+import { getNotifications } from '../services/api';
 
-const NotificationScreen = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
+const NotificationScreen = ({ route, navigation }) => {
+  const { class_name, student_name } = route.params || {};
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
       fetchNotifications();
-    }, [])
+    }, [class_name])
   );
 
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      
-      const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch('https://api.indinexz.com/api/v1/parent/notifications', {
-        method: 'GET',
-        headers: headers,
-      });
-
-      const data = await response.json();
-      console.log('Notifications Response:', data);
-
-      if (response.ok) {
-        const notificationList = Array.isArray(data) ? data : (data.data || []);
-        setNotifications(notificationList);
-      } else if (response.status === 401) {
-        Alert.alert('Session Expired', 'Please login to view notifications.', [
-          { text: 'Login', onPress: () => navigation.navigate('Login') },
-          { text: 'Cancel', style: 'cancel' }
-        ]);
-      } else {
-        console.warn('Notification fetch failed:', data.message);
-      }
+      const data = await getNotifications(class_name);
+      const notificationList = Array.isArray(data) ? data : (data.data || []);
+      setNotifications(notificationList);
     } catch (error) {
       console.error('Fetch Error:', error);
+      if (error.message.includes('401')) {
+        Alert.alert('Session Expired', 'Please login to view notifications.', [
+          { text: 'Login', onPress: () => navigation.navigate('Login') }
+        ]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,26 +54,25 @@ const NotificationScreen = ({ navigation }) => {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.iconCircle}>
-          <Ionicons name="notifications" size={20} color="#ffffff" />
+          <Ionicons name="notifications" size={18} color="#ffffff" />
         </View>
-        <Text style={styles.notificationTitle}>{item.title}</Text>
+        <Text style={styles.notificationTitle} numberOfLines={1}>{item.title}</Text>
       </View>
       
       <Text style={styles.notificationMessage}>{item.message}</Text>
       
-      {item.class_name && (
-        <View style={styles.tagContainer}>
-          <Text style={styles.tagText}>Class: {item.class_name}</Text>
-        </View>
-      )}
-      
       <View style={styles.cardFooter}>
+        {item.class_name && (
+          <View style={styles.tagContainer}>
+            <Text style={styles.tagText}>Class: {item.class_name}</Text>
+          </View>
+        )}
         <Text style={styles.notificationDate}>{formatDate(item.created_at)}</Text>
       </View>
     </View>
   );
 
-  if (isLoading) {
+  if (isLoading && notifications.length === 0) {
     return (
       <View style={styles.centeredContainer}>
         <ActivityIndicator size="large" color="#2e7d32" />
@@ -107,17 +83,23 @@ const NotificationScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
       <CommonHeader title="Notifications" navigation={navigation} />
+
+      <View style={styles.topInfo}>
+        <Text style={styles.studentName}>{student_name || 'School Updates'}</Text>
+        <Text style={styles.infoSubtitle}>Stay updated with important notices</Text>
+      </View>
 
       <FlatList
         data={notifications}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => (item.id || index).toString()}
         renderItem={renderNotificationItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={80} color="#66bb6a" opacity={0.5} />
+            <Ionicons name="notifications-off-outline" size={60} color="#bdc3c7" />
             <Text style={styles.emptyText}>No notifications available</Text>
           </View>
         }
@@ -131,39 +113,33 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f1f8f4',
+    backgroundColor: '#f5f5f5',
   },
-  appBar: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  topInfo: {
+    backgroundColor: '#2e7d32',
+    padding: 20,
+    paddingBottom: 25,
   },
-  appBarTitle: {
+  studentName: {
+    color: '#ffffff',
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1b5e20',
+    fontWeight: 'bold',
   },
-  iconButton: {
-    padding: 8,
+  infoSubtitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    marginTop: 4,
   },
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f1f8f4',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
-    color: '#1b5e20',
+    fontSize: 14,
+    color: '#2e7d32',
   },
   listContent: {
     padding: 16,
@@ -171,63 +147,63 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 15,
-    marginVertical: 8,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   iconCircle: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     backgroundColor: '#2e7d32',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   notificationTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2e7d32',
+    color: '#2c3e50',
     flex: 1,
   },
   notificationMessage: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-    marginBottom: 12,
+    fontSize: 14,
+    color: '#576574',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f1f1',
+    paddingTop: 12,
   },
   tagContainer: {
     backgroundColor: '#e8f5e9',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 10,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#2e7d32',
-    fontWeight: '500',
-  },
-  cardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: '#f1f1f1',
-    paddingTop: 8,
-    alignItems: 'flex-end',
+    fontWeight: '600',
   },
   notificationDate: {
     fontSize: 12,
-    color: '#757575',
+    color: '#95a5a6',
   },
   emptyContainer: {
     marginTop: 100,
@@ -236,10 +212,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 15,
-    fontSize: 16,
-    color: '#66bb6a',
+    fontSize: 15,
+    color: '#bdc3c7',
     fontWeight: '500',
   },
 });
 
 export default NotificationScreen;
+

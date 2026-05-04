@@ -71,6 +71,15 @@ export default function LoginScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Back Button to Home */}
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.replace('Main')}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2e7d32" />
+            <Text style={styles.backText}>Back to Home</Text>
+          </TouchableOpacity>
+
           {/* Top Logo - Full Horizontal Version */}
           <View style={styles.brandingSection}>
             <Image
@@ -81,6 +90,7 @@ export default function LoginScreen({ navigation }) {
             {/* Subtitle Only (Headings removed to avoid redundancy) */}
             <Text style={styles.portalSubtitle}>Parent Portal</Text>
           </View>
+
 
           {/* Login Card */}
           <View style={styles.loginCard}>
@@ -177,8 +187,20 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 100,
+    paddingTop: 60, // Adjusted for back button
     paddingBottom: 40,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 10,
+  },
+  backText: {
+    fontSize: 16,
+    color: '#2e7d32',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   brandingSection: {
     alignItems: 'center',

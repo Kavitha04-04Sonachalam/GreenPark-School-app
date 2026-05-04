@@ -49,7 +49,7 @@ const AboutScreen = ({ navigation }) => {
     {
       title: 'Motto',
       icon: 'ribbon-outline',
-      content: '"The pursuit of knowledge and excellence is a lifelong journey."'
+      content: 'The pursuit of knowledge and excellence is a lifelong journey.'
     }
   ];
 

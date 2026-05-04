@@ -33,7 +33,20 @@ export const getEventById = async (id) => {
   }
 };
 
+export const getEventMedia = async (id) => {
+  try {
+    console.log(`Fetching media for event ${id} from: ${API_URL}/api/v1/events/${id}/media`);
+    const response = await galleryApi.get(`/api/v1/events/${id}/media`);
+    console.log(`Media for event ${id} API Response:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching media for event ${id}:`, error.response || error.message);
+    throw error;
+  }
+};
+
 export default {
   getEvents,
   getEventById,
+  getEventMedia,
 };

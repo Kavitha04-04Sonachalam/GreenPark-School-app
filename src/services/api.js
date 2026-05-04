@@ -1,19 +1,26 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const BASE_URL = 'https://api.indinexz.com';
 
 const request = async (endpoint, options = {}) => {
   try {
+    const token = await AsyncStorage.getItem('token');
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    };
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
       ...options,
+      headers,
     });
 
     const data = await response.json();
     
     // Log the API result for debugging
-    console.log('API RESULT:', data);
+    console.log(`API [${options.method || 'GET'}] ${endpoint}:`, data);
 
     if (!response.ok) {
       throw new Error(data?.message || 'Request failed');
@@ -27,21 +34,43 @@ const request = async (endpoint, options = {}) => {
 };
 
 export const loginUser = async (mobile, password) => {
-  // Backend expects phone_number, password, and role
   const requestBody = {
     phone_number: mobile,
     password: password,
     role: 'parent',
   };
 
-  console.log('LOGIN REQUEST:', requestBody);
-
-  // Correct Endpoint: /api/v1/login
   return request('/api/v1/login', {
     method: 'POST',
     body: JSON.stringify(requestBody),
   });
 };
+
+// --- Student & Parent APIs ---
+
+export const getStudents = async (parentId) => {
+  return request(`/api/v1/students/${parentId}`);
+};
+
+export const getMarks = async (studentId) => {
+  return request(`/api/v1/marks/${studentId}`);
+};
+
+export const getAttendance = async (studentId) => {
+  return request(`/api/v1/attendance/${studentId}`);
+};
+
+export const getFees = async (studentId) => {
+  return request(`/api/v1/fees/${studentId}`);
+};
+
+export const getNotifications = async (className) => {
+  const endpoint = className 
+    ? `/api/v1/parent/notifications?class_name=${className}`
+    : '/api/v1/parent/notifications';
+  return request(endpoint);
+};
+
 
 
 

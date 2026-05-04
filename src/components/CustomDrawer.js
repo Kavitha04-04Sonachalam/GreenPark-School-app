@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function CustomDrawer(props) {
   const menuItems = [
-    { label: 'Event Gallery', icon: 'images-outline', screen: 'GalleryScreen' },
+    { label: 'Event Gallery', icon: 'images-outline', screen: 'EventList' },
     { label: 'Notice Board', icon: 'megaphone-outline', screen: 'NoticeScreen' },
     { label: 'Contact Us & Administration', icon: 'call-outline', screen: 'ContactScreen' },
     { label: 'Student Login', icon: 'school-outline', screen: 'Login' },
