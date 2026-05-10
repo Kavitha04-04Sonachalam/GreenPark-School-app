@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   Dimensions,
   Modal,
   TouchableWithoutFeedback,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -20,7 +23,28 @@ const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeBanner, setActiveBanner] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
   const scrollRef = useRef(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkLoginStatus();
+    }, [])
+  );
+
+  const checkLoginStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const user = await AsyncStorage.getItem('user');
+      setIsLoggedIn(!!token);
+      if (user) {
+        setUserData(JSON.parse(user));
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    }
+  };
 
   const banners = [
     require('../../assets/images/newbanner1.png'),
@@ -32,7 +56,12 @@ const HomeScreen = ({ navigation }) => {
     { id: '1', title: 'Event Gallery', icon: '📸', screen: 'EventList' },
     { id: '2', title: 'Notice Board', icon: '📢', screen: 'NoticeScreen' },
     { id: '3', title: 'Contact Us', icon: '📞', screen: 'ContactScreen' },
-    { id: '4', title: 'Student Login', icon: '🎓', screen: 'Login' },
+    { 
+      id: '4', 
+      title: isLoggedIn ? 'Dashboard' : 'Parent Login', 
+      icon: '🎓', 
+      screen: isLoggedIn ? 'Dashboard' : 'Login' 
+    },
     { id: '5', title: 'About Us', icon: '🏫', screen: 'AboutScreen' },
     { id: '6', title: 'Social Media', icon: '📱', screen: 'SocialScreen' },
   ];
@@ -76,8 +105,12 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
         
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>GREEN PARK MATRIC</Text>
-          <Text style={styles.headerSubtitle}>HR SEC SCHOOL</Text>
+          <Image 
+            source={require('../../assets/images/round.png')} 
+            style={styles.headerLogo} 
+            resizeMode="contain"
+          />
+          <Text style={styles.headerTitleText}>GPS Siruvachur</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -85,13 +118,38 @@ const HomeScreen = ({ navigation }) => {
             style={styles.headerIcon} 
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Ionicons name="notifications-outline" size={26} color="#ffffff" />
+            <Ionicons name="notifications-outline" size={24} color="#ffffff" />
             <View style={styles.badge} />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.headerIcon} onPress={toggleMenu}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#ffffff" />
+          <TouchableOpacity 
+            style={styles.headerIcon} 
+            onPress={() => Linking.openURL('https://wa.me/919629322223')}
+          >
+            <Ionicons name="logo-whatsapp" size={24} color="#ffffff" />
           </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.headerIcon} onPress={toggleMenu}>
+            <Ionicons name="ellipsis-vertical" size={22} color="#ffffff" />
+          </TouchableOpacity>
+
+          {isLoggedIn && (
+            <TouchableOpacity 
+              style={styles.avatarButton} 
+              onPress={() => navigation.navigate('Profile')}
+            >
+              {userData?.profile_image ? (
+                <Image 
+                  source={{ uri: userData.profile_image }} 
+                  style={styles.avatarImage} 
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={20} color="#2e7d32" />
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -105,19 +163,32 @@ const HomeScreen = ({ navigation }) => {
         <TouchableWithoutFeedback onPress={toggleMenu}>
           <View style={styles.modalOverlay}>
             <View style={styles.menuDropdown}>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); /* Navigate to Profile */ }}>
-                <Ionicons name="person-outline" size={20} color="#2e7d32" />
-                <Text style={styles.menuItemText}>Profile</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); /* Navigate to Settings */ }}>
-                <Ionicons name="settings-outline" size={20} color="#2e7d32" />
-                <Text style={styles.menuItemText}>Settings</Text>
-              </TouchableOpacity>
-              <View style={styles.menuDivider} />
-              <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); navigation.replace('Login'); }}>
-                <Ionicons name="log-out-outline" size={20} color="#d32f2f" />
-                <Text style={[styles.menuItemText, { color: '#d32f2f' }]}>Logout</Text>
-              </TouchableOpacity>
+              {isLoggedIn ? (
+                <>
+                  <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); navigation.navigate('Settings'); }}>
+                    <Ionicons name="settings-outline" size={20} color="#2e7d32" />
+                    <Text style={styles.menuItemText}>Settings</Text>
+                  </TouchableOpacity>
+                  <View style={styles.menuDivider} />
+                  <TouchableOpacity 
+                    style={styles.menuItem} 
+                    onPress={async () => { 
+                      toggleMenu(); 
+                      await AsyncStorage.multiRemove(['token', 'user', 'selected_student_id', 'selected_class_name']);
+                      setIsLoggedIn(false);
+                      navigation.replace('Login'); 
+                    }}
+                  >
+                    <Ionicons name="log-out-outline" size={20} color="#d32f2f" />
+                    <Text style={[styles.menuItemText, { color: '#d32f2f' }]}>Logout</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.menuItem} onPress={() => { toggleMenu(); navigation.navigate('Login'); }}>
+                  <Ionicons name="log-in-outline" size={20} color="#2e7d32" />
+                  <Text style={styles.menuItemText}>Parent Login</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -215,36 +286,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    elevation: 8,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   headerIcon: {
-    padding: 8,
+    padding: 6,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerTitleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textAlign: 'center',
+  headerLogo: {
+    width: 38,
+    height: 38,
+    marginRight: 10,
+    borderRadius: 19, // Half of width/height for perfect circle
+    backgroundColor: '#ffffff', // Ensures logo pops against green
+    borderWidth: 1.5,
+    borderColor: '#ffffff', // Minimal white border for contrast
+    overflow: 'hidden',
   },
-  headerSubtitle: {
-    color: '#fbc02d',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: -2,
+  headerTitleText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  avatarButton: {
+    marginLeft: 4,
+    padding: 2,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  avatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   badge: {
     position: 'absolute',

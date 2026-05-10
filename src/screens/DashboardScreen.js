@@ -109,6 +109,15 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const navigateToService = (screen) => {
+    if (screen === 'Settings') {
+      navigation.navigate('Settings');
+      return;
+    }
+    if (screen === 'Profile') {
+      navigation.navigate('Profile');
+      return;
+    }
+
     if (!selectedStudent) {
       Alert.alert('Select Student', 'Please select a child to view their details.');
       return;
@@ -169,26 +178,42 @@ export default function DashboardScreen({ navigation }) {
         {/* Floating Header Section */}
         <View style={styles.headerCard}>
           <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.welcomeText}>Welcome,</Text>
-              <Text style={styles.userName}>{userData.name}</Text>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity 
+                style={styles.homeButton} 
+                onPress={() => navigation.replace('Main')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="home-outline" size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.welcomeText}>Welcome,</Text>
+                <Text style={styles.userName}>{userData.name}</Text>
+              </View>
             </View>
             <TouchableOpacity 
-              style={styles.logoutButton} 
-              onPress={async () => {
-                await AsyncStorage.multiRemove(['token', 'user', 'selected_student_id', 'selected_class_name']);
-                navigation.replace('Login');
-              }}
+              style={styles.profileButton} 
+              onPress={() => navigation.navigate('Profile')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="log-out-outline" size={22} color="#ffffff" />
+              <Ionicons name="person-circle-outline" size={32} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Guardian Profile Card Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Guardian Profile</Text>
-          <View style={styles.profileCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Guardian Profile</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+              <Text style={styles.viewAllText}>View Details</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={styles.profileCard}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.8}
+          >
             <View style={styles.profileContent}>
               <View style={styles.detailRow}>
                 <Ionicons name="person-outline" size={18} color="#2e7d32" style={styles.detailIcon} />
@@ -205,7 +230,7 @@ export default function DashboardScreen({ navigation }) {
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Children Section */}
@@ -277,6 +302,7 @@ export default function DashboardScreen({ navigation }) {
             <ServiceCard title="Fees" icon="💰" screen="Fees" />
             <ServiceCard title="Marks" icon="📝" screen="Marks" />
             <ServiceCard title="Notifications" icon="🔔" screen="Notifications" />
+            <ServiceCard title="Settings" icon="⚙️" screen="Settings" />
           </View>
         </View>
 
@@ -339,6 +365,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  homeButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    justifyContent: 'center',
+  },
   welcomeText: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
@@ -351,10 +390,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 4,
   },
-  logoutButton: {
-    padding: 10,
+  profileButton: {
+    padding: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 12,
+    borderRadius: 20,
   },
   section: {
     marginBottom: 28,
@@ -380,6 +419,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
     fontWeight: '600',
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: '#2e7d32',
+    fontWeight: '600',
+    marginRight: 4,
   },
   profileCard: {
     backgroundColor: '#FFFFFF',

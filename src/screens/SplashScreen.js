@@ -63,14 +63,18 @@ export default function SplashScreen({ navigation }) {
         const token = await AsyncStorage.getItem('token');
         const user = await AsyncStorage.getItem('user');
 
+        // Allow animations to play for at least 2 seconds for branding
         setTimeout(() => {
           if (token && user) {
+            // Valid session found, auto-login
             navigation.replace('Dashboard');
           } else {
-            navigation.replace('Main'); // Navigate to Public Drawer
+            // No session, go to public home screen
+            navigation.replace('Main');
           }
-        }, 3000);
+        }, 2000);
       } catch (e) {
+        console.error('Splash check error:', e);
         navigation.replace('Main');
       }
     };

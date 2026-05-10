@@ -70,8 +70,19 @@ export const getNotifications = async (className) => {
     : '/api/v1/parent/notifications';
   return request(endpoint);
 };
+export const changePassword = async (phone, currentPassword, newPassword) => {
+  const requestBody = {
+    phone_number: phone,
+    current_password: currentPassword,
+    new_password: newPassword,
+  };
 
+  return request('/api/v1/change-password', {
+    method: 'POST',
+    body: JSON.stringify(requestBody),
+  });
+};
 
-
-
-
+export const getStudentsByParent = async (parentId) => {
+  return request(`/api/v1/students/${parentId}`);
+};

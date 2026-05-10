@@ -19,6 +19,8 @@ import SocialScreen from '../screens/SocialScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import FeesScreen from '../screens/FeesScreen';
 import MarksScreen from '../screens/MarksScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import CustomDrawer from '../components/CustomDrawer';
 
 const Stack = createNativeStackNavigator();
@@ -58,6 +60,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Fees" component={FeesScreen} />
         <Stack.Screen name="Marks" component={MarksScreen} />
         <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="About" component={AboutScreen} />
+        <Stack.Screen name="Contact" component={ContactScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
