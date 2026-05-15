@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import axios from 'axios';
+import CommonHeader from '../components/CommonHeader';
 
 const ContactScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -88,19 +89,7 @@ const ContactScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* 1. HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.headerTitle}>Contact Us</Text>
-          <Text style={{ fontSize: 10, color: '#fbc02d' }}>v1.0.3 - Map & Form Ready</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+      <CommonHeader title="Contact Us" navigation={navigation} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

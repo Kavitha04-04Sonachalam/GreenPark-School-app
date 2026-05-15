@@ -49,7 +49,7 @@ export default function LoginScreen({ navigation }) {
         await AsyncStorage.setItem('user', JSON.stringify(user));
         
         // Save specific fields for quick access as requested
-        const parentId = user.parent_id || user.id || user.user_id;
+        const parentId = user.parent_id || user.phone_number || user.id;
         if (parentId) await AsyncStorage.setItem('parent_id', parentId.toString());
         if (user.phone_number || user.phone) await AsyncStorage.setItem('phone_number', (user.phone_number || user.phone).toString());
         if (user.role) await AsyncStorage.setItem('role', user.role);

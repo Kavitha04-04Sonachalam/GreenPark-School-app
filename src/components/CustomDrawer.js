@@ -13,7 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
 
 export default function CustomDrawer(props) {
   const menuItems = [
@@ -28,24 +27,47 @@ export default function CustomDrawer(props) {
 
   const [logoutModalVisible, setLogoutModalVisible] = React.useState(false);
   const [studentInfo, setStudentInfo] = React.useState(null);
-  const isFocused = useIsFocused();
+  const [parentInfo, setParentInfo] = React.useState(null);
 
   React.useEffect(() => {
-    if (isFocused) {
-      loadStudentData();
-    }
-  }, [isFocused]);
+    // Load data once on mount
+    loadData();
 
-  const loadStudentData = async () => {
+    // Refresh data whenever the drawer is opened
+    const unsubscribe = props.navigation.addListener('state', (e) => {
+      // The state listener can detect if the drawer is opening
+      loadData();
+    });
+
+    return unsubscribe;
+  }, [props.navigation]);
+
+  const loadData = async () => {
     try {
       const userJson = await AsyncStorage.getItem('user');
+      const selectedStudentJson = await AsyncStorage.getItem('selected_student');
       const selectedId = await AsyncStorage.getItem('selected_student_id');
       
       if (userJson) {
         const user = JSON.parse(userJson);
-        const children = user.children || [];
-        const currentStudent = children.find(s => (s.student_id || s.id) === selectedId) || children[0];
-        setStudentInfo(currentStudent);
+        setParentInfo(user);
+        
+        // 1. Try to load the explicitly selected student first
+        if (selectedStudentJson) {
+          console.log('Drawer - Found selected_student object');
+          setStudentInfo(JSON.parse(selectedStudentJson));
+        } else {
+          // 2. Fallback to finding it in the children list
+          const children = user.children || user.students || user.student_list || [];
+          if (children.length > 0) {
+            const currentStudent = children.find(s => 
+              String(s.student_id || s.id) === String(selectedId)
+            ) || children[0];
+            setStudentInfo(currentStudent);
+          } else {
+            setStudentInfo(null);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading student data for drawer:', error);
@@ -78,10 +100,16 @@ export default function CustomDrawer(props) {
       <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScrollView}>
         {/* Drawer Header - Student Profile Section */}
         <View style={styles.profileHeaderContainer}>
-          <View style={styles.avatarWrapper}>
-            {studentInfo?.profile_image ? (
+          <TouchableOpacity 
+            style={styles.avatarWrapper}
+            onPress={() => {
+              props.navigation.navigate('Profile');
+              props.navigation.closeDrawer();
+            }}
+          >
+            {parentInfo?.profile_image_url || parentInfo?.profile_image ? (
               <Image
-                source={{ uri: studentInfo.profile_image }}
+                source={{ uri: `${parentInfo.profile_image_url || parentInfo.profile_image}?t=${new Date().getTime()}` }}
                 style={styles.studentAvatar}
                 resizeMode="cover"
               />
@@ -90,13 +118,21 @@ export default function CustomDrawer(props) {
                 <Ionicons name="person" size={50} color="#2e7d32" />
               </View>
             )}
-          </View>
+          </TouchableOpacity>
           <View style={styles.studentDetails}>
             <Text style={styles.studentName}>
-              {studentInfo ? `${studentInfo.first_name || ''} ${studentInfo.last_name || ''}` : 'Select Student'}
+              {studentInfo 
+                ? (studentInfo.first_name 
+                    ? `${studentInfo.first_name} ${studentInfo.last_name || ''}` 
+                    : (studentInfo.name || 'Student')) 
+                : 'Select Student'}
             </Text>
             <Text style={styles.studentGrade}>
-              {studentInfo ? `Class: ${studentInfo.class_ || ''} - ${studentInfo.section || ''}` : 'No class assigned'}
+              {studentInfo 
+                ? (studentInfo.class_ 
+                    ? `Class: ${studentInfo.class_} - ${studentInfo.section || ''}` 
+                    : (studentInfo.class ? `Class: ${studentInfo.class}` : 'No class assigned'))
+                : 'No class assigned'}
             </Text>
           </View>
         </View>
@@ -197,31 +233,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   avatarWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#e8f5e9',
     // Premium Shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
   },
   studentAvatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
   },
   avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
     backgroundColor: '#f1f8f4',
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,44 +25,48 @@ export default function DashboardScreen({ navigation }) {
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const userJson = await AsyncStorage.getItem('user');
-        console.log("Logged in User Data:", userJson);
-        
-        if (userJson) {
-          const user = JSON.parse(userJson);
-          setUserData(user);
-          
-          // CRITICAL: Use children already present in the user object if available
-          if (user.children && Array.isArray(user.children) && user.children.length > 0) {
-            console.log("Using children from user object:", user.children);
-            setChildren(user.children);
-            handleSelectStudent(user.children[0]);
-            setIsLoading(false);
-            // Optionally still fetch for latest data, but we already have data to show
-            fetchChildren(user.parent_id || user.id || user.user_id);
-          } else {
-            const parentId = user.parent_id || user.id || user.user_id || user.parentId;
-            if (parentId) {
-              fetchChildren(parentId);
-            } else {
-              setIsLoading(false);
-            }
-          }
-        } else {
-          navigation.replace('Login');
-        }
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      loadInitialData();
+    }, [])
+  );
 
-    loadInitialData();
-  }, []);
+  const loadInitialData = async () => {
+    try {
+      const userJson = await AsyncStorage.getItem('user');
+      console.log("Logged in User Data:", userJson);
+      
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        setUserData(user);
+        
+        // CRITICAL: Use children already present in the user object if available
+        if (user.children && Array.isArray(user.children) && user.children.length > 0) {
+          console.log("Using children from user object:", user.children);
+          setChildren(user.children);
+          if (!selectedStudent) {
+            handleSelectStudent(user.children[0]);
+          }
+          setIsLoading(false);
+          // Optionally still fetch for latest data, but we already have data to show
+          fetchChildren(user.parent_id || user.phone_number || user.id);
+        } else {
+          const parentId = user.parent_id || user.phone_number || user.id;
+          if (parentId) {
+            fetchChildren(parentId);
+          } else {
+            setIsLoading(false);
+          }
+        }
+      } else {
+        navigation.replace('Login');
+      }
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchChildren = async (parentId) => {
     setIsChildrenLoading(true);
@@ -97,12 +103,10 @@ export default function DashboardScreen({ navigation }) {
 
   const handleSelectStudent = async (student) => {
     setSelectedStudent(student);
-    const sId = student.student_id || student.id;
-    const cName = student.class_ || student.class_name || '';
-    
     try {
-      if (sId) await AsyncStorage.setItem('selected_student_id', sId.toString());
-      if (cName) await AsyncStorage.setItem('selected_class_name', cName.toString());
+      await AsyncStorage.setItem('selected_student', JSON.stringify(student));
+      await AsyncStorage.setItem('selected_student_id', (student.student_id || student.id).toString());
+      await AsyncStorage.setItem('selected_class_name', (student.class_ || student.class || student.class_name || '').toString());
     } catch (error) {
       console.error('Error saving selected student:', error);
     }
@@ -188,7 +192,7 @@ export default function DashboardScreen({ navigation }) {
               </TouchableOpacity>
               <View style={styles.headerTextContainer}>
                 <Text style={styles.welcomeText}>Welcome,</Text>
-                <Text style={styles.userName}>{userData.name}</Text>
+                <Text style={styles.userName}>{userData.parent_name || userData.name}</Text>
               </View>
             </View>
             <TouchableOpacity 
@@ -197,7 +201,14 @@ export default function DashboardScreen({ navigation }) {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="person-circle-outline" size={32} color="#ffffff" />
+              {userData?.profile_image_url || userData?.profile_image ? (
+                <Image 
+                  source={{ uri: `${userData.profile_image_url || userData.profile_image}?t=${new Date().getTime()}` }} 
+                  style={styles.profileButtonImage} 
+                />
+              ) : (
+                <Ionicons name="person-circle-outline" size={32} color="#ffffff" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -219,7 +230,7 @@ export default function DashboardScreen({ navigation }) {
                 <Ionicons name="person-outline" size={18} color="#2e7d32" style={styles.detailIcon} />
                 <View>
                   <Text style={styles.detailLabel}>Parent Name</Text>
-                  <Text style={styles.detailValue}>{userData.name}</Text>
+                  <Text style={styles.detailValue}>{userData.parent_name || userData.name}</Text>
                 </View>
               </View>
               <View style={[styles.detailRow, { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
@@ -394,6 +405,14 @@ const styles = StyleSheet.create({
     padding: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 20,
+    overflow: 'hidden',
+  },
+  profileButtonImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#fff',
   },
   section: {
     marginBottom: 28,

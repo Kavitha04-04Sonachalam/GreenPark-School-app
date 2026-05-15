@@ -9,12 +9,14 @@ import {
   View,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { getStudents } from '../services/api';
+import { getStudents, getParentProfile, uploadProfilePhoto } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +25,7 @@ export default function ProfileScreen({ navigation }) {
   const [children, setChildren] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     loadProfileData();
@@ -35,9 +38,10 @@ export default function ProfileScreen({ navigation }) {
         const user = JSON.parse(userJson);
         setUserData(user);
         
-        const parentId = user.parent_id || user.id || user.user_id;
+        const parentId = user.parent_id || user.phone_number || user.id;
         if (parentId) {
           fetchChildren(parentId);
+          refreshProfile(parentId);
         }
       } else {
         navigation.replace('Login');
@@ -46,6 +50,116 @@ export default function ProfileScreen({ navigation }) {
       console.error('Error loading profile:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async (parentId) => {
+    try {
+      const response = await getParentProfile(parentId);
+      const updatedUser = response.data || response;
+      if (updatedUser) {
+        setUserData(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
+  const pickImage = async () => {
+    Alert.alert(
+      'Profile Photo',
+      'Choose an option',
+      [
+        {
+          text: 'Camera',
+          onPress: () => handleImagePicker('camera'),
+        },
+        {
+          text: 'Gallery',
+          onPress: () => handleImagePicker('gallery'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleImagePicker = async (type) => {
+    console.log('Opening image picker for:', type);
+    try {
+      let result;
+      const options = {
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      };
+
+      if (type === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        console.log('Camera permission status:', status);
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        console.log('Gallery permission status:', status);
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Gallery permission is required to pick photos.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      console.log('Picker result:', result);
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        uploadPhoto(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Something went wrong while picking the image.');
+    }
+  };
+
+  const uploadPhoto = async (asset) => {
+    const parentId = userData?.parent_id || userData?.phone_number || userData?.id;
+    if (!parentId) {
+      Alert.alert('Error', 'User ID not found. Please log in again.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('parent_id', parentId);
+      
+      const filename = asset.uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image`;
+
+      formData.append('image', {
+        uri: asset.uri,
+        name: filename,
+        type: type,
+      });
+
+      await uploadProfilePhoto(formData);
+      
+      // Success - refresh profile
+      await refreshProfile(parentId);
+      Alert.alert('Success', 'Profile photo updated successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Upload Failed', error.message || 'Could not upload profile photo. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -148,15 +262,33 @@ export default function ProfileScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Header Card */}
         <View style={styles.profileMainCard}>
-          <View style={styles.profileImageContainer}>
-            <View style={styles.profilePlaceholder}>
-              <Ionicons name="person" size={50} color="#fff" />
-            </View>
-            <View style={styles.editBadge}>
-              <Ionicons name="camera" size={14} color="#fff" />
-            </View>
-          </View>
-          <Text style={styles.profileName}>{userData?.name}</Text>
+          <TouchableOpacity 
+            style={styles.profileImageContainer} 
+            onPress={pickImage}
+            disabled={isUploading}
+          >
+            {userData?.profile_image_url || userData?.profile_image ? (
+              <Image 
+                source={{ uri: `${userData.profile_image_url || userData.profile_image}?t=${new Date().getTime()}` }} 
+                style={styles.profileImage} 
+              />
+            ) : (
+              <View style={styles.profilePlaceholder}>
+                <Ionicons name="person" size={50} color="#fff" />
+              </View>
+            )}
+            
+            {isUploading ? (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : (
+              <View style={styles.editBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.profileName}>{userData?.parent_name || userData?.name}</Text>
           <View style={styles.roleBadge}>
             <Text style={styles.roleText}>{userData?.role?.toUpperCase() || 'PARENT'}</Text>
           </View>
@@ -170,6 +302,11 @@ export default function ProfileScreen({ navigation }) {
               icon="card-outline" 
               label="Parent ID" 
               value={userData?.parent_id || userData?.id || userData?.user_id} 
+            />
+            <DetailItem 
+              icon="person-outline" 
+              label="Parent Name" 
+              value={userData?.parent_name || userData?.name} 
             />
             <DetailItem 
               icon="call-outline" 
@@ -265,6 +402,24 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     backgroundColor: '#2e7d32',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
   },

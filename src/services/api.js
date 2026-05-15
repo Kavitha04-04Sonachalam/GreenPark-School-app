@@ -7,7 +7,7 @@ const request = async (endpoint, options = {}) => {
     const token = await AsyncStorage.getItem('token');
     
     const headers = {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     };
@@ -85,4 +85,17 @@ export const changePassword = async (phone, currentPassword, newPassword) => {
 
 export const getStudentsByParent = async (parentId) => {
   return request(`/api/v1/students/${parentId}`);
+};
+
+// --- Profile APIs ---
+
+export const getParentProfile = async (parentId) => {
+  return request(`/api/v1/profile/${parentId}`);
+};
+
+export const uploadProfilePhoto = async (formData) => {
+  return request('/api/v1/profile/upload-photo', {
+    method: 'POST',
+    body: formData,
+  });
 };

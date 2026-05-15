@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import CommonHeader from '../components/CommonHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -56,13 +57,7 @@ const AboutScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Custom Header */}
-      <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'ios' ? 0 : 10) }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={26} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>About Us</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <CommonHeader title="About Us" navigation={navigation} />
 
       <ScrollView 
         showsVerticalScrollIndicator={false}

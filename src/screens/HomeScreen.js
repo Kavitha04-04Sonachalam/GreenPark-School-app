@@ -138,9 +138,9 @@ const HomeScreen = ({ navigation }) => {
               style={styles.avatarButton} 
               onPress={() => navigation.navigate('Profile')}
             >
-              {userData?.profile_image ? (
+              {userData?.profile_image_url || userData?.profile_image ? (
                 <Image 
-                  source={{ uri: userData.profile_image }} 
+                  source={{ uri: `${userData.profile_image_url || userData.profile_image}?t=${new Date().getTime()}` }} 
                   style={styles.avatarImage} 
                 />
               ) : (
